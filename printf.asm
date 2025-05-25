@@ -119,6 +119,12 @@
 .equ	FDIG6	= 6<<1
 .equ	FDIG7	= 7<<1
 
+; SRAM address for the printf character delay flag.
+; This flag controls whether a short delay (char_delay) is inserted after each character printed by _putw.
+; IMPORTANT: The byte at this SRAM address should be initialized to 1 (enabled) by the main application's
+;            setup code to have letter-by-letter display active by default.
+.equ printf_char_delay_active_flag_addr, 0x0260 
+
 ; ===macro ====================================================
 
 .macro	PRINTF			; putc function (UART, LCD...)
@@ -133,6 +139,8 @@
 
 
 ; === routines ================================================
+
+.extern char_delay ; Allow calling char_delay defined in messages.asm
 
 _printf:
 	POPZ			; z points to begin of "string"
@@ -191,12 +199,50 @@ space_detect_end:
 ; === putc (put character) ===============================
 ; in	w	character to put
 ;	e1,e0	address of output routine (UART, LCD putc)
-_putw:
+_putw_raw: ; Renamed from _putw - this is the raw character output
 	PUSH3	a0,zh,zl
 	MOV3	a0,zh,zl, w,e1,e0
 	icall			; indirect call to "putc"
 	POP3	a0,zh,zl
 	ret
+
+; New _putw: calls _putw_raw to print, then conditionally calls char_delay for effect
+_putw:
+    rcall _putw_raw     ; Print the character
+    push r16            ; Save r16 (general purpose scratch, or a0)
+    lds r16, printf_char_delay_active_flag_addr ; Load the delay flag
+    tst r16             ; Check if the flag is zero
+    pop r16             ; Restore r16
+    breq _putw_skip_char_delay ; If zero, skip the delay
+    rcall char_delay    ; Call char_delay if flag is non-zero
+_putw_skip_char_delay:
+    ret
+
+;-------------------------------------------------------------------------------
+; enable_printf_char_delay
+; Purpose: Enables the character-by-character print delay.
+; Operation: Sets printf_char_delay_active_flag (at 0x0260) to 1.
+; Registers used: r16 (scratch).
+;-------------------------------------------------------------------------------
+enable_printf_char_delay:
+    push r16
+    ldi r16, 1
+    sts printf_char_delay_active_flag_addr, r16
+    pop r16
+    ret
+
+;-------------------------------------------------------------------------------
+; disable_printf_char_delay
+; Purpose: Disables the character-by-character print delay.
+; Operation: Sets printf_char_delay_active_flag (at 0x0260) to 0.
+; Registers used: r16 (scratch).
+;-------------------------------------------------------------------------------
+disable_printf_char_delay:
+    push r16
+    ldi r16, 0
+    sts printf_char_delay_active_flag_addr, r16
+    pop r16
+    ret
 
 ; === putchar (put character) ============================
 ; in	x	pointer to character to put
