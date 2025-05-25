@@ -77,3 +77,31 @@ LCD_lf:
 	rcall	LCD_pos			; set cursor position
 	pop	a0					; restore a0
 	ret
+
+;-------------------------------------------------------------------------------
+; LCD_clear_line2
+; Purpose: Clears the second line of a 16-character LCD by writing spaces.
+;          Uses direct character output (LCD_putc) to bypass printf's char_delay.
+; Assumes: 16-character line width.
+; Registers used: a0 (for LCD_pos, LCD_putc), r20 (loop counter).
+;                 These registers are saved and restored.
+;-------------------------------------------------------------------------------
+LCD_clear_line2:
+  push a0           ; Save a0 (used for LCD_pos and char data for LCD_putc)
+  push r20          ; Save r20 (used as loop counter)
+
+  ; Set cursor to the beginning of the second line (DDRAM address 0x40)
+  ldi a0, 0x40
+  rcall LCD_pos
+
+  ; Write 16 space characters to clear the line
+  ldi r20, 16       ; Initialize loop counter for 16 characters
+clear_line2_loop:
+  ldi a0, ' '       ; Load space character into a0
+  rcall LCD_putc    ; Call LCD_putc to write the character directly
+  dec r20           ; Decrement loop counter
+  brne clear_line2_loop ; Continue if not zero
+
+  pop r20           ; Restore r20
+  pop a0            ; Restore a0
+  ret
