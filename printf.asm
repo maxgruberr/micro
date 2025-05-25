@@ -48,6 +48,17 @@
 ; to be stored into SRAM and further printed by fprint must reside at
 ; 0x0200 up to 0x02ff, and must be addressed using a label. Usage: see
 ; file string1.asm, for example.
+;
+; IMPORTANT CLARIFICATION ON SRAM USAGE WITH FORMATTERS (e.g., FDEC, FHEX):
+; The 'sram' argument provided in the format string (e.g., PRINTF LCD, .db "Val:", FDEC, my_var_sram_addr, 0)
+; is the *direct memory address* from which the formatter (FDEC, FHEX, etc.) will read the
+; variable's data. The printf routine uses this address to load the data into internal
+; registers (like a0-a3) before calling the specific formatting logic (e.g., _ftoa).
+; For example, in `messages.asm`, the `m_display_turn_timer` routine stores a timer value
+; into an SRAM location defined as `timer_value_sram` (e.g., 0x0261). It then calls
+; PRINTF with `..., FDEC, timer_value_sram, 0`. The FDEC specifier will then correctly
+; read the timer value from address `timer_value_sram` for display.
+; This mechanism allows flexible printing of user-managed variables stored anywhere in accessible SRAM.
 
 ; The FFRAC formatting character must be followed by 
 ;	ONE sram address and 

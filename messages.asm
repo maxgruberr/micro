@@ -28,6 +28,12 @@
 ;   registers they use.
 ;-------------------------------------------------------------------------------
 
+; SRAM address for storing the raw timer value (0-10) for FDEC printing.
+.equ timer_value_sram, 0x0261 
+
+; External declaration for a subroutine in lcd.asm
+.extern LCD_clear_line2
+
 ;-------------------------------------------------------------------------------
 ; char_delay
 ; Purpose: Creates a pause of approx. 40ms (at 4MHz) for letter-by-letter display.
@@ -324,4 +330,42 @@ initial_sequence_flash_loop:
   ; Note: No delay after this message in this routine, game flow will continue.
 
   pop r22           ; Restore r22
+  ret
+
+;-------------------------------------------------------------------------------
+; m_display_turn_timer
+; Purpose: Displays the turn timer value on the LCD.
+;          Clears line 2, then prints "Time: <value>" at Line 2, Pos 4.
+; Input:   a0 - The current timer value (0-10).
+; SRAM usage: Stores the input timer value at timer_value_sram (0x0261)
+;             for use with PRINTF's FDEC formatter.
+; Registers used: a0 (input, then for LCD_pos), r16 (scratch for LCD position).
+;                 a0 and r16 are saved and restored.
+; Calls:   sts, LCD_clear_line2, LCD_pos, disable_printf_char_delay,
+;          PRINTF, enable_printf_char_delay.
+; Note:    The timer value is printed instantly (char delay disabled temporarily).
+;-------------------------------------------------------------------------------
+m_display_turn_timer:
+  push a0           ; Save a0 (contains the input timer value)
+  push r16          ; Save r16 (will be used as scratch)
+
+  ; Store the input timer value from a0 into the dedicated SRAM location
+  sts timer_value_sram, a0
+
+  ; Clear the second line of the LCD
+  rcall LCD_clear_line2
+
+  ; Set LCD cursor to Line 2, Position 4 (0x40 + 4 = 0x44)
+  ldi r16, 0x44
+  mov a0, r16       ; LCD_pos expects position in a0
+  rcall LCD_pos
+
+  ; Print the "Time: <value>" message instantly
+  rcall disable_printf_char_delay
+  PRINTF LCD
+  .db "Time: ", FDEC, timer_value_sram, 0
+  rcall enable_printf_char_delay
+
+  pop r16           ; Restore r16
+  pop a0            ; Restore a0 (original input timer value)
   ret
