@@ -30,17 +30,32 @@
 
 ;-------------------------------------------------------------------------------
 ; char_delay
-; Purpose: Creates a very short pause, for letter-by-letter display effect.
-; Registers used: r20 (pushed/popped to preserve).
-; Operation: Uses a single loop. Adjust 0x30 for desired speed.
+; Purpose: Creates a pause of approx. 40ms (at 4MHz) for letter-by-letter display.
+;          This provides a more noticeable delay between characters.
+; Registers used: r20, r21 (pushed/popped to preserve).
+; Operation: Uses a two-level nested loop.
+;            Outer loop (r21): 212 iterations.
+;            Inner loop (r20): 250 iterations.
+;            Approx. cycles: Outer_Count * (Inner_Count * 3_cycles_inner + 3_cycles_outer_ops)
+;                          = 212 * (250 * 3 + 3) = 212 * 753 = 159,636 cycles.
+;            At 4MHz: 159,636 / 4,000,000 = 0.039909 seconds (~39.91 ms).
 ;-------------------------------------------------------------------------------
 char_delay:
-  push r20          ; Save r20
-  ldi r20, 0x30     ; Loop count for short delay
-char_delay_loop:
-  dec r20
-  brne char_delay_loop
-  pop r20           ; Restore r20
+  push r20          ; Save r20 first
+  push r21          ; Then save r21
+
+  ldi r21, 0xD4     ; Initialize outer loop counter (212 iterations)
+char_delay_outer_loop_start:
+  ldi r20, 0xFA     ; Initialize inner loop counter (250 iterations) - loaded each outer cycle
+char_delay_inner_loop_start:
+  dec r20           ; 1 cycle
+  brne char_delay_inner_loop_start ; 2 cycles if branch, 1 if not (effectively 3 for the loop)
+  
+  dec r21           ; 1 cycle
+  brne char_delay_outer_loop_start ; 2 cycles if branch, 1 if not
+
+  pop r21           ; Restore r21 first (reverse order of push)
+  pop r20           ; Then restore r20
   ret
 
 ;-------------------------------------------------------------------------------
