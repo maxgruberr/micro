@@ -60,19 +60,19 @@ char_delay_inner_loop_start:
 
 ;-------------------------------------------------------------------------------
 ; flash_delay
-; Purpose: Creates a delay of approximately 0.5 seconds (at 4MHz clock).
+; Purpose: Creates a delay of approximately 0.25 seconds (at 4MHz clock).
 ;          Used for effects like flashing messages.
 ; Registers used: r20, r21, r22 (pushed/popped to preserve).
 ; Operation: Uses three nested loops.
 ;            Approx. cycles = Outer_Count * Middle_Count * Inner_Count * 4 cycles
-;            10 * 200 * 250 * 4 = 2,000,000 cycles = 0.5 seconds at 4MHz.
+;            5 * 200 * 250 * 4 = 1,000,000 cycles = 0.25 seconds at 4MHz.
 ;-------------------------------------------------------------------------------
 flash_delay:
   push r20
   push r21
   push r22
 
-  ldi r22, 0x0A      ; Outer loop counter (10)
+  ldi r22, 0x05      ; Outer loop counter (5). Was 0x0A for ~0.5s.
 flash_delay_outer_loop:
   ldi r21, 0xC8      ; Middle loop counter (200)
 flash_delay_middle_loop:
@@ -110,9 +110,9 @@ game_over_flash_loop:
   .db "GAME OVER", 0
   rcall enable_printf_char_delay  ; Restore default char delay behavior for subsequent messages
 
-  rcall flash_delay ; Keep "GAME OVER" on screen for 0.5s
+  rcall flash_delay ; Keep "GAME OVER" on screen for 0.25s (now uses shorter delay)
   rcall LCD_clear   ; Clear the screen for the "off" part of the flash
-  rcall flash_delay ; Keep screen blank for 0.5s
+  rcall flash_delay ; Keep screen blank for 0.25s (now uses shorter delay)
 
   dec r22           ; Decrement loop counter
   brne game_over_flash_loop ; Continue if not zero
@@ -306,9 +306,9 @@ initial_sequence_flash_loop:
   .db "Start Game!", 0
   rcall enable_printf_char_delay  ; Restore letter-by-letter for other messages
 
-  rcall flash_delay ; Delay for 0.5s
+  rcall flash_delay ; Delay for 0.25s (now uses shorter delay)
   rcall LCD_clear   ; Clear for flashing effect
-  rcall flash_delay ; Delay for 0.5s (screen blank)
+  rcall flash_delay ; Delay for 0.25s (now uses shorter delay)
 
   dec r22
   brne initial_sequence_flash_loop
